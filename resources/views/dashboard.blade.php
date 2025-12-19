@@ -162,8 +162,8 @@
                     <div 
                         class="group relative bg-white/60 backdrop-blur-md rounded-2xl border border-white/40 p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer"
                         :class="{'ring-2 theme-ring-primary shadow-lg bg-indigo-50/50': selectedFiles.some(f => f.id === {{ $file->id }})}"
-                        @click="selectFile(@json($file))"
-                        @dblclick="{{ $file->type === 'folder' ? "window.location.href = '" . route('file-manager.dashboard', ['folder_id' => $file->id]) . "'" : "openPreview(@json($file), " . json_encode($files->items()) . ")" }}"
+                        @click="selectFile(allFiles.find(f => f.id == {{ $file->id }}))"
+                        @dblclick="{{ $file->type === 'folder' ? "window.location.href = '" . route('file-manager.dashboard', array_merge(request()->query(), ['folder_id' => $file->id])) . "'" : "openPreview(allFiles.find(f => f.id == " . $file->id . "), allFiles)" }}"
                     >
                         
                         <!-- Selection Checkbox (Visible on Hover or Selected) -->
@@ -368,13 +368,13 @@
                         @if($file->type === 'folder')
                              onclick="window.location.href='{{ route('file-manager.dashboard', array_merge(request()->query(), ['folder_id' => $file->id])) }}'"
                         @else
-                            @click="pickerMode ? selectFile({{ $file->toJson() }}) : openPreview({{ $file->toJson() }}, allFiles)"
+                            @click="pickerMode ? selectFile(allFiles.find(f => f.id == {{ $file->id }})) : openPreview(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
                         @endif
                     >
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
                                 <!-- Selection Checkbox/Radio -->
-                                <div x-show="pickerMode" class="mr-3" @click.stop="selectFile({{ $file->toJson() }})">
+                                <div x-show="pickerMode" class="mr-3" @click.stop="selectFile(allFiles.find(f => f.id == {{ $file->id }}))">
                                     @if($file->type !== 'folder')
                                     <div x-show="pickerMultiple" 
                                          class="w-5 h-5 rounded border border-gray-300 bg-white flex items-center justify-center transition-colors"

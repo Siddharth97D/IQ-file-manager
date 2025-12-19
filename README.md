@@ -1,99 +1,145 @@
-# Laravel Advanced File Manager
+# 🚀 Laravel Advanced File Manager
 
-A production-ready Laravel file management package with role-based access, image/video compression, and storage quotas.
+A powerful, production-ready file management package for Laravel applications. Designed to be a drop-in solution for handling media, documents, and folders with a modern, responsive UI.
 
-## Features
+## 🌟 Why Use This Package?
 
-- 📂 **Admin Dashboard**: Ready-to-use UI for managing files.
-- 🔐 **Role & Permission Aware**: Restrict access to dashboard and file operations.
-- 🖼️ **Image & Video Processing**: Compression, resizing, and thumbnails.
-- 📊 **Storage Quotas**: Track usage per user and disk.
-- 🚀 **High-Speed Uploads**: Chunked/resumable uploads.
-- 🔌 **API-First**: Full JSON API for headless usage.
-- 🗑️ **Trash Management**: Soft deletes and restore functionality.
-- 🔗 **Secure Sharing**: Create time-limited, password-protected share links.
+Unlike basic file uploaders, this package provides a full **Operating System-like experience** directly in your browser.
 
-## Requirements
+- **Zero Config UI**: Comes with a sleek, beautiful dashboard out of the box.
+- **Developer Friendly**: Easy to install, widely configurable, and API-first.
+- **Integration Ready**: Use it standalone or as a **File Picker** for your forms (CMS style).
+- **Performance**: Optimized for large libraries with pagination, search, and efficient querying.
 
-- PHP 8.2+
-- Laravel 11.0+
-- FFmpeg (optional, for video processing)
+---
 
-## Installation
+## ✨ Key Features
 
-1. Install the package via Composer:
+### ✅ Core Functionalities
+- **Directory Structure**: Create nested folders, move files, and rename items.
+- **Drag & Drop Uploads**: Simple drag-and-drop interface for uploading multiple files.
+- **Smart Previews**: Built-in modal to preview Images, Videos, PDFs, and Folder details.
+- **Advanced Search**: Filter by text, file type (Image, Video, Audio, Doc), date range, and location.
+- **Bulk Actions**: Select multiple files to move or delete in batches.
+- **Trash Bin**: Soft delete system with "Restore" and "Permanently Delete" options.
+- **Zip Downloads**: Download entire folders as `.zip` archives.
 
+### 🎨 Customization
+- **Dynamic Theming**: Change sidebar colors, active states, and fonts directly from settings.
+- **Grid & List Views**: Toggle between visual grid layouts and detailed list tables.
+
+---
+
+## 🛠 Installation
+
+### 1. Require the Package
 ```bash
 composer require iqonic/laravel-advanced-file-manager
 ```
 
-2. Publish the configuration, migrations, and assets:
-
+### 2. Publish Assets & Config
+Publish the configuration file, migrations, and frontend assets:
 ```bash
 php artisan vendor:publish --provider="Iqonic\FileManager\FileManagerServiceProvider"
 ```
 
-3. Run the migrations:
-
+### 3. Run Migrations
+Create the necessary database tables:
 ```bash
 php artisan migrate
 ```
 
-## Configuration
+### 4. Storage Link
+Ensure your public storage is linked:
+```bash
+php artisan storage:link
+```
 
-The configuration file is located at `config/file-manager.php`.
+---
 
-### Key Settings
+## 🚀 Usage
 
-- **route_prefix**: Change the URL prefix for the dashboard and API (default: `file-manager`).
-- **middleware**: Middleware to apply to routes (default: `['web', 'auth']`).
-- **enabled_disks**: List of filesystem disks to allow (e.g., `public`, `s3`).
-- **quotas**: Set storage limits per user or role.
-- **compression**: Define profiles for image and video processing.
+### 1. Standalone Dashboard
+Access the full file manager dashboard at:
+```
+/file-manager
+```
+(You can change this route in `config/file-manager.php`)
 
-## Usage
+### 2. File Picker Mode (Integration)
+Want to use this file manager to select files for a form in your own application? Use the **Picker Mode**.
 
-### Dashboard
+**How it works:**
+1. Open the file manager in a popup window with specific query parameters.
+2. The user selects file(s) and clicks "Confirm Selection".
+3. The window closes and sends the selected file data back to your main window via `postMessage`.
 
-Visit `/file-manager` in your browser to access the dashboard. Ensure you are logged in and have the necessary permissions (if configured).
+**Example Implementation:**
 
-### API
+```javascript
+// Function to open the File Manager
+function openFileManager() {
+    // Params:
+    // pickerMode=true  -> Enables selection mode
+    // multiple=false   -> Set to true for multi-select
+    const width = 1000;
+    const height = 700;
+    const left = (screen.width - width) / 2;
+    const top = (screen.height - height) / 2;
 
-The package provides a full REST API under `/file-manager/api`.
+    window.open(
+        '/file-manager?pickerMode=true&multiple=false', 
+        'FileManager', 
+        `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
+    );
+}
 
-- `GET /files`: List files
-- `POST /files/upload`: Upload a file
-- `DELETE /files/{id}`: Delete a file
-- `GET /stats/usage`: Get storage usage
+// Listen for the selection event
+window.addEventListener('message', (event) => {
+    // Verify usage if running on different domains, generally optional for same-origin
+    if (event.data.type === 'fm_selection') {
+        const file = event.data.file; // OR event.data.files if multiple=true
+        
+        console.log('User selected:', file);
+        
+        // Example: Update your form inputs
+        // document.getElementById('featured_image_input').value = file.url;
+        // document.getElementById('preview_img').src = file.url;
+    }
+});
+```
 
-### Facade
-
-You can use the `FileManager` facade in your code:
+### 3. API Usage
+You can also use the backend service programmatically.
 
 ```php
 use Iqonic\FileManager\Facades\FileManager;
 
 // Upload a file
-$file = FileManager::upload($request->file('document'));
+$file = FileManager::upload($request->file('avatar'));
 
-// Delete a file
-FileManager::delete($file);
+// Create a folder
+$folder = FileManager::createFolder('New Gallery');
+
+// Get Files in a Folder
+$files = FileManager::listFiles(['folder_id' => $folder->id]);
 ```
 
-## Permissions
+---
 
-To restrict access to the dashboard, you can define a gate or permission. By default, it checks for `filemanager.access`.
+## ⚙️ Configuration
 
-In your `AppServiceProvider`:
+Check `config/file-manager.php` for all settings.
 
-```php
-use Illuminate\Support\Facades\Gate;
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `route_prefix` | `file-manager` | URL prefix for the dashboard. |
+| `middleware` | `['web', 'auth']` | Middleware applied to routes. |
+| `disk` | `public` | Storage disk (supports `s3`). |
+| `upload.max_size_mb` | `100` | Max upload size per file. |
+| `upload.allowed_mimes` | `[...]` | Allowed file types. |
 
-Gate::define('filemanager.access', function ($user) {
-    return $user->isAdmin();
-});
-```
+---
 
-## License
-
-MIT
+## 📄 License
+MIT License.

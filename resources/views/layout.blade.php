@@ -8,8 +8,6 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
         window.apiBaseUrl = "{{ url(config('file-manager.route_prefix') . '/api') }}";
-        console.log('API Base URL configured as:', window.apiBaseUrl);
-        console.log('Cache bust:', Date.now()); // Force reload
     </script>
     <!-- Google Fonts: Inter & Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -591,7 +589,7 @@
 
     // File Preview Methods
     openPreview(file, allFiles) {
-        this.previewFiles = allFiles.filter(f => f.type !== 'folder');
+        this.previewFiles = allFiles; // Allow folders to be previewed
         this.previewFileIndex = this.previewFiles.findIndex(f => f.id === file.id);
         this.showPreviewModal = true;
         
@@ -845,15 +843,24 @@
             <div class="flex-1 flex items-center justify-center overflow-hidden">
                 <template x-if="currentPreviewFile">
                     <div class="max-w-full max-h-full flex items-center justify-center">
+                        <!-- Folder Preview -->
+                         <template x-if="currentPreviewFile.type === 'folder'">
+                             <div class="text-center text-white">
+                                <svg class="w-48 h-48 mx-auto mb-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path></svg>
+                                <p class="text-3xl font-bold" x-text="currentPreviewFile.basename"></p>
+                                <p class="text-lg opacity-80 mt-2">Folder</p>
+                             </div>
+                         </template>
+
                         <!-- Image Preview -->
-                        <template x-if="currentPreviewFile.mime_type && currentPreviewFile.mime_type.startsWith('image/')">
+                        <template x-if="currentPreviewFile.type !== 'folder' && currentPreviewFile.mime_type && currentPreviewFile.mime_type.startsWith('image/')">
                             <img :src="`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/preview`" 
                                  :alt="currentPreviewFile.basename"
                                  class="max-w-full max-h-full object-contain">
                         </template>
 
                         <!-- Video Preview -->
-                        <template x-if="currentPreviewFile.mime_type && currentPreviewFile.mime_type.startsWith('video/')">
+                        <template x-if="currentPreviewFile.type !== 'folder' && currentPreviewFile.mime_type && currentPreviewFile.mime_type.startsWith('video/')">
                             <video :key="currentPreviewFile.id" controls autoplay class="max-w-full max-h-full">
                                 <source :src="`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/preview`" :type="currentPreviewFile.mime_type">
                                 Your browser does not support the video tag.
@@ -861,14 +868,14 @@
                         </template>
 
                         <!-- PDF Preview -->
-                        <template x-if="currentPreviewFile.mime_type && currentPreviewFile.mime_type === 'application/pdf'">
+                        <template x-if="currentPreviewFile.type !== 'folder' && currentPreviewFile.mime_type === 'application/pdf'">
                             <iframe :src="`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/preview`"
                                     class="w-full h-full border-0">
                             </iframe>
                         </template>
 
-                        <!-- Other Files - Show Info -->
-                        <template x-if="currentPreviewFile.mime_type && !currentPreviewFile.mime_type.startsWith('image/') && !currentPreviewFile.mime_type.startsWith('video/') && currentPreviewFile.mime_type !== 'application/pdf'">
+                        <!-- Other Files (Generic) -->
+                        <template x-if="currentPreviewFile.type !== 'folder' && currentPreviewFile.mime_type && !currentPreviewFile.mime_type.startsWith('image/') && !currentPreviewFile.mime_type.startsWith('video/') && currentPreviewFile.mime_type !== 'application/pdf'">
                             <div class="text-center text-white">
                                 <svg class="w-32 h-32 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
@@ -888,56 +895,97 @@
             <div class="w-96 bg-white rounded-lg p-6 overflow-y-auto flex-shrink-0">
                 <template x-if="currentPreviewFile">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-4">File Information</h3>
+                        <!-- Header -->
+                        <div class="flex items-start justify-between mb-6">
+                            <h3 class="text-xl font-bold text-gray-900">Information</h3>
+                             <span x-show="currentPreviewFile.type === 'folder'" 
+                                   class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full">
+                                Folder
+                             </span>
+                        </div>
                         
                         <!-- File Name -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">File Name</label>
-                            <p class="text-sm text-gray-900 break-words" x-text="currentPreviewFile.basename"></p>
+                        <div class="mb-5">
+                            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Name</label>
+                            <p class="text-sm font-medium text-gray-900 break-words" x-text="currentPreviewFile.basename"></p>
                         </div>
 
-                        <!-- File Size -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Size</label>
-                            <p class="text-sm text-gray-900" x-text="(currentPreviewFile.size / 1024 / 1024).toFixed(2) + ' MB'"></p>
+                        <!-- Location / Parent -->
+                         <div class="mb-5">
+                            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Location</label>
+                            <div class="flex items-center text-sm text-gray-900">
+                                <template x-if="currentPreviewFile.parent">
+                                    <div class="flex items-center" :title="currentPreviewFile.parent.basename">
+                                        <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                        <span x-text="currentPreviewFile.parent.basename" class="truncate max-w-[200px]"></span>
+                                    </div>
+                                </template>
+                                <template x-if="!currentPreviewFile.parent">
+                                    <span class="text-gray-400 italic">Home / Root</span>
+                                </template>
+                            </div>
                         </div>
+
+                        <!-- Counts (For Folder) -->
+                        <template x-if="currentPreviewFile.type === 'folder'">
+                            <div class="mb-5 grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Files</label>
+                                    <p class="text-lg font-bold text-blue-600" x-text="currentPreviewFile.sub_files_count || 0"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Folders</label>
+                                    <p class="text-lg font-bold text-yellow-500" x-text="currentPreviewFile.sub_folders_count || 0"></p>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- File Size (For File) -->
+                        <template x-if="currentPreviewFile.type !== 'folder'">
+                            <div class="mb-5">
+                                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Size</label>
+                                <p class="text-sm text-gray-900" x-text="(currentPreviewFile.size / 1024 / 1024).toFixed(2) + ' MB'"></p>
+                            </div>
+                        </template>
 
                         <!-- File Type -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                            <p class="text-sm text-gray-900" x-text="currentPreviewFile.mime_type || 'Unknown'"></p>
+                        <div class="mb-5">
+                            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Type</label>
+                            <p class="text-sm text-gray-900" x-text="currentPreviewFile.type === 'folder' ? 'Directory' : (currentPreviewFile.mime_type || 'Unknown')"></p>
                         </div>
 
-                        <!-- Upload Date -->
-                        <div class="mb-4" x-show="currentPreviewFile.created_at">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Uploaded</label>
-                            <p class="text-sm text-gray-900" x-text="new Date(currentPreviewFile.created_at).toLocaleString()"></p>
+                        <!-- Date -->
+                        <div class="mb-5" x-show="currentPreviewFile.created_at">
+                            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Created</label>
+                            <p class="text-sm text-gray-900" x-text="currentPreviewFile.human_date || new Date(currentPreviewFile.created_at).toLocaleDateString()"></p>
                         </div>
+
+                        <hr class="border-gray-100 my-5">
 
                         <!-- File URL with Copy Button -->
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1">File URL</label>
+                            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2" x-text="currentPreviewFile.type === 'folder' ? 'Download Zip Link' : 'File Download Link'"></label>
                             <div class="flex gap-2">
                                 <input type="text" 
-                                       :value="`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/download`"
+                                       :value="`{{ url(config('file-manager.route_prefix')) }}/api/${currentPreviewFile.type === 'folder' ? 'folders' : 'files'}/${currentPreviewFile.id}/download`"
                                        readonly
-                                       class="flex-1 text-sm bg-gray-50 border border-gray-300 rounded px-3 py-2 text-gray-600 overflow-hidden text-ellipsis">
-                                <button @click="copyToClipboard(`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/download`)"
-                                        class="theme-bg-primary hover:opacity-90 text-white px-4 py-2 rounded text-sm font-medium flex-shrink-0">
+                                       class="flex-1 text-xs bg-gray-50 border border-gray-200 rounded px-3 py-2 text-gray-600 overflow-hidden text-ellipsis focus:outline-none">
+                                <button @click="copyToClipboard(`{{ url(config('file-manager.route_prefix')) }}/api/${currentPreviewFile.type === 'folder' ? 'folders' : 'files'}/${currentPreviewFile.id}/download`)"
+                                        class="theme-bg-primary hover:opacity-90 text-white px-3 py-2 rounded text-xs font-medium flex-shrink-0 transition-colors">
                                     Copy
                                 </button>
                             </div>
                         </div>
 
                         <!-- Download Button -->
-                        <a :href="`{{ url(config('file-manager.route_prefix')) }}/api/files/${currentPreviewFile.id}/download`"
-                           class="block w-full bg-green-600 hover:bg-green-700 text-white text-center px-4 py-2 rounded font-medium">
-                            Download
+                        <a :href="`{{ url(config('file-manager.route_prefix')) }}/api/${currentPreviewFile.type === 'folder' ? 'folders' : 'files'}/${currentPreviewFile.id}/download`"
+                           class="block w-full theme-bg-primary hover:opacity-90 text-white text-center px-4 py-3 rounded-xl font-semibold shadow-lg shadow-indigo-500/20 transition-all hover:scale-[1.02]">
+                            <span x-text="currentPreviewFile.type === 'folder' ? 'Download as Zip' : 'Download File'"></span>
                         </a>
 
                         <!-- Counter -->
-                        <div class="mt-6 text-center text-sm text-gray-500">
-                            <span x-text="previewFileIndex + 1"></span> / <span x-text="previewFiles.length"></span>
+                        <div class="mt-6 text-center text-xs text-gray-400">
+                            Item <span x-text="previewFileIndex + 1"></span> of <span x-text="previewFiles.length"></span>
                         </div>
                     </div>
                 </template>

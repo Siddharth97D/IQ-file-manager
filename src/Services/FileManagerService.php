@@ -4,6 +4,7 @@ namespace Iqonic\FileManager\Services;
 
 use Iqonic\FileManager\Models\File;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class FileManagerService
 {
@@ -88,12 +89,207 @@ class FileManagerService
             }
         }
 
-        // Order by latest
+        // Order by Type (Folder first) then Latest
+        $query->orderByRaw("CASE WHEN type = 'folder' THEN 1 ELSE 2 END");
         $query->latest();
 
         $query->with('parent');
         $query->withCount(['subFiles', 'subFolders']);
 
         return $query->paginate(20);
+    }
+    /**
+     * Create a new folder
+     */
+    public function createFolder(string $name, ?int $parentId = null): File
+    {
+        $path = $name;
+        $disk = config('file-manager.disk', 'public');
+
+        if ($parentId) {
+            $parent = File::find($parentId);
+            if ($parent) {
+                $path = $parent->path . '/' . $name;
+                $disk = $parent->disk; 
+            }
+        }
+
+        // Create directory on disk
+        if (!Storage::disk($disk)->exists($path)) {
+            Storage::disk($disk)->makeDirectory($path);
+        }
+
+        return File::create([
+            'basename' => $name,
+            'path' => $path,
+            'type' => 'folder',
+            'mime_type' => 'directory',
+            'extension' => '', 
+            'parent_id' => $parentId,
+            'owner_id' => Auth::id(),
+            'disk' => $disk,
+            'size' => 0,
+        ]);
+    }
+
+    /**
+     * Upload a file
+     */
+    public function upload(\Illuminate\Http\UploadedFile $uploadedFile, array $data = []): File
+    {
+        $disk = config('file-manager.disk', 'public');
+        $parentId = $data['parent_id'] ?? null;
+        $path = '';
+
+        if ($parentId) {
+            $parent = File::find($parentId);
+            if ($parent) {
+                $path = $parent->path;
+                $disk = $parent->disk;
+            }
+        }
+
+        // Generate unique filename
+        $filename = $uploadedFile->getClientOriginalName();
+        $extension = $uploadedFile->getClientOriginalExtension();
+        $basename = pathinfo($filename, PATHINFO_FILENAME);
+        
+        // Handle duplicate names if necessary (simple append for now or rely on storage)
+        $storagePath = $path ? $path : '/'; 
+        
+        $filePath = Storage::disk($disk)->putFileAs($storagePath, $uploadedFile, $filename);
+
+        return File::create([
+            'basename' => $filename,
+            'path' => $filePath,
+            'type' => 'file',
+            'mime_type' => $uploadedFile->getMimeType(),
+            'extension' => $extension,
+            'parent_id' => $parentId,
+            'owner_id' => Auth::id(),
+            'disk' => $disk,
+            'size' => $uploadedFile->getSize(),
+        ]);
+    }
+
+    /**
+     * Rename a file or folder
+     */
+    public function rename(File $file, string $newName): bool
+    {
+        $oldPath = $file->path;
+        $newPath = $file->parent ? $file->parent->path . '/' . $newName : $newName;
+
+        if (Storage::disk($file->disk)->exists($oldPath)) {
+            if (Storage::disk($file->disk)->move($oldPath, $newPath)) {
+                $file->update([
+                    'basename' => $newName,
+                    'path' => $newPath,
+                ]);
+                return true;
+            }
+        } else {
+             // If physical file missing, just update DB
+            $file->update([
+                'basename' => $newName,
+                'path' => $newPath,
+            ]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Move a file or folder
+     */
+    public function move(File $file, ?int $parentId): bool
+    {
+        $newPath = $file->basename;
+        if ($parentId) {
+            $parent = File::find($parentId);
+            if ($parent) {
+                $newPath = $parent->path . '/' . $file->basename;
+            }
+        }
+
+        if (Storage::disk($file->disk)->exists($file->path)) {
+             if (Storage::disk($file->disk)->move($file->path, $newPath)) {
+                 $file->update([
+                    'parent_id' => $parentId,
+                    'path' => $newPath,
+                ]);
+                return true;
+            }
+        } else {
+             $file->update([
+                'parent_id' => $parentId,
+                'path' => $newPath,
+            ]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Delete a file or folder
+     */
+    public function delete(File $file): bool
+    {
+        return $file->delete();
+    }
+
+    /**
+     * Restore a file or folder
+     */
+    public function restore(File $file): bool
+    {
+        return $file->restore();
+    }
+
+    /**
+     * Download folder as Zip
+     */
+    public function downloadFolder(File $folder): string
+    {
+        $zipFileName = $folder->basename . '_' . time() . '.zip';
+        $zipPath = storage_path('app/temp/' . $zipFileName); // Local temp path
+        
+        // Ensure temp dir exists
+        if (!file_exists(dirname($zipPath))) {
+            mkdir(dirname($zipPath), 0755, true);
+        }
+
+        $zip = new \ZipArchive;
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+            // Get all files recursively
+            $files = Storage::disk($folder->disk)->allFiles($folder->path);
+            
+            // If folder is empty, add a placeholder file so zip is created
+            if (empty($files)) {
+                $zip->addFromString('empty.txt', 'This folder is empty.');
+            } else {
+                foreach ($files as $filePath) {
+                    // Get file content
+                    $content = Storage::disk($folder->disk)->get($filePath);
+                    
+                    // Calculate relative path inside the zip
+                    $relativePath = substr($filePath, strlen($folder->path) + 1);
+                    
+                    if (!empty($relativePath)) {
+                        $zip->addFromString($relativePath, $content);
+                    }
+                }
+            }
+            $zip->close();
+        }
+        
+        if (!file_exists($zipPath)) {
+             // Fallback or throw exception
+             throw new \Exception("Failed to create zip file at $zipPath");
+        }
+
+        return $zipPath;
     }
 }
