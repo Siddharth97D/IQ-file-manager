@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [1.1.0] - 2025-12-23
 
+
 ### Added
 - AWS S3 SDK dependency (`aws/aws-sdk-php`).
 - Bulk Restore and Bulk Delete functionality in the Trash view.

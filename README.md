@@ -146,7 +146,9 @@ Check `config/file-manager.php` for all settings.
 ## 🔍 SEO & Use Cases
 
 ### Laravel File Manager with S3
+
 This package is built to handle high-volume storage. By simply changing your disk to `s3` in the config(Settings), you gain a powerful **Laravel S3 file manager** that handles multi-part uploads and secure previews without taxing your web server.
+
 
 ### Laravel File Picker for Forms
 Need a **Laravel file selector** for your blog's featured image? Use the `pickerMode` to turn the file manager into a modal popup. It returns clean file objects (URL, ID, Name) to your parent window via JS events.
