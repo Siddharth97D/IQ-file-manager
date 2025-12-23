@@ -5,6 +5,7 @@ namespace Iqonic\FileManager\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Iqonic\FileManager\Models\Setting;
+use Aws\S3\S3Client;
 
 class SettingsController extends Controller
 {
@@ -85,7 +86,7 @@ class SettingsController extends Controller
         ]);
         
         try {
-            $s3Client = new \Aws\S3\S3Client([
+            $s3Client = new S3Client([
                 'version' => 'latest',
                 'region' => $validated['s3_region'],
                 'credentials' => [

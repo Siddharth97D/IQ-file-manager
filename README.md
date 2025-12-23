@@ -1,15 +1,16 @@
 # 🚀 Laravel Advanced File Manager
 
-A powerful, production-ready file management package for Laravel applications. Designed to be a drop-in solution for handling media, documents, and folders with a modern, responsive UI.
+A powerful, production-ready **Laravel file manager package** with OS-like UI, media library, and file picker mode. Designed to be a drop-in solution for handling media, documents, and folders with a modern, responsive interface.
 
-## 🌟 Why Use This Package?
+## 🌟 Why Use This Over Others?
 
-Unlike basic file uploaders, this package provides a full **Operating System-like experience** directly in your browser.
+While there are many file managers for Laravel, this package is built for developers who need a **complete product experience** rather than just a file uploader.
 
-- **Zero Config UI**: Comes with a sleek, beautiful dashboard out of the box.
-- **Developer Friendly**: Easy to install, widely configurable, and API-first.
-- **Integration Ready**: Use it standalone or as a **File Picker** for your forms (CMS style).
-- **Performance**: Optimized for large libraries with pagination, search, and efficient querying.
+- **OS-Like Experience**: A full windowing/folder system that users already know how to use.
+- **Built-in UI Customization**: Unlike UniSharp or alexusmai, we provide a dynamic theming engine to match your brand instantly.
+- **Picker & Standalone Modes**: Easily switch between a full-page dashboard and a modal-based file picker for your CMS forms.
+- **Performance at Scale**: Optimized for AWS S3 and local storage with deep search and pagination.
+- **Zero Dependencies**: Powered by Alpine.js and Tailwind - no heavy jQuery or legacy JS required.
 
 ---
 
@@ -17,6 +18,7 @@ Unlike basic file uploaders, this package provides a full **Operating System-lik
 
 ### ✅ Core Functionalities
 - **Directory Structure**: Create nested folders, move files, and rename items.
+- **AWS S3 Integration**: Just need s3 credentials to upload files to s3 from your laravel project.
 - **Drag & Drop Uploads**: Simple drag-and-drop interface for uploading multiple files.
 - **Smart Previews**: Built-in modal to preview Images, Videos, PDFs, and Folder details.
 - **Advanced Search**: Filter by text, file type (Image, Video, Audio, Doc), date range, and location.
@@ -138,6 +140,19 @@ Check `config/file-manager.php` for all settings.
 | `disk` | `public` | Storage disk (supports `s3`). |
 | `upload.max_size_mb` | `100` | Max upload size per file. |
 | `upload.allowed_mimes` | `[...]` | Allowed file types. |
+
+---
+
+## 🔍 SEO & Use Cases
+
+### Laravel File Manager with S3
+This package is built to handle high-volume storage. By simply changing your disk to `s3` in the config, you gain a powerful **Laravel S3 file manager** that handles multi-part uploads and secure previews without taxing your web server.
+
+### Laravel File Picker for Forms
+Need a **Laravel file selector** for your blog's featured image? Use the `pickerMode` to turn the file manager into a modal popup. It returns clean file objects (URL, ID, Name) to your parent window via JS events.
+
+### Laravel Media Library UI
+If you find the default Spatie Media Library too "headless", use this package as your **Laravel media library UI**. It provides the visual layer you need to browse, search, and manage your processed media variants.
 
 ---
 

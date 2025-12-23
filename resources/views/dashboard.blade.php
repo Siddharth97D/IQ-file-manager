@@ -60,6 +60,18 @@
                 <button @click="view = 'list'" :class="{'bg-gray-200': view === 'list'}" class="p-2 rounded hover:bg-gray-100">
                     <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
+                <button @click="if(selectedFiles.length === allFiles.length) { selectedFiles = [] } else { selectedFiles = [...allFiles] }" 
+                        class="p-2 rounded hover:bg-gray-100 text-gray-600 flex items-center text-sm font-medium"
+                        title="Select All">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                    <span x-text="selectedFiles.length === allFiles.length ? 'Deselect All' : 'Select All'"></span>
+                </button>
+                <button @click="refresh()" 
+                        class="p-2 rounded hover:bg-gray-100 text-gray-600 flex items-center text-sm font-medium"
+                        title="Refresh">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Refresh
+                </button>
             </div>
             <div class="relative w-full max-w-xl flex items-center space-x-2">
                 <!-- Search Input -->
@@ -162,13 +174,13 @@
                     <div 
                         class="group relative bg-white/60 backdrop-blur-md rounded-2xl border border-white/40 p-4 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer"
                         :class="{'ring-2 theme-ring-primary shadow-lg bg-indigo-50/50': selectedFiles.some(f => f.id === {{ $file->id }})}"
-                        @click="selectFile(allFiles.find(f => f.id == {{ $file->id }}))"
+                        @click="handleFileClick(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
                         @dblclick="{{ $file->type === 'folder' ? "window.location.href = '" . route('file-manager.dashboard', array_merge(request()->query(), ['folder_id' => $file->id])) . "'" : "openPreview(allFiles.find(f => f.id == " . $file->id . "), allFiles)" }}"
                     >
                         
                         <!-- Selection Checkbox (Visible on Hover or Selected) -->
-                        <div x-show="pickerMode" 
-                             class="absolute top-3 right-3 z-10 transition-opacity duration-200"
+                        <div 
+                             class="absolute top-3 left-3 z-10 transition-opacity duration-200"
                              :class="{'opacity-100': selectedFiles.some(f => f.id === {{ $file->id }}), 'opacity-0 group-hover:opacity-100': !selectedFiles.some(f => f.id === {{ $file->id }})}"
                         >
                              <div class="w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-200 backdrop-blur-sm"
@@ -194,22 +206,9 @@
                                  x-transition:enter-start="opacity-0 scale-95"
                                  x-transition:enter-end="opacity-100 scale-100">
                                  <div class="py-1">
-                                     <button @click.stop="openRename(@json($file)); closeMenu()" class="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
+                                    <button @click.stop="openRename({{ $file->toJson() }}); closeMenu()" class="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                         Rename
-                                     </button>
-                                     <button @click.stop="downloadFile(@json($file)); closeMenu()" class="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                        Download
-                                     </button>
-                                     <button @click.stop="openMove(@json($file)); closeMenu()" class="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                        Move
-                                     </button>
-                                     <div class="border-t border-gray-100/50 my-1"></div>
-                                     <button @click.stop="openTrash(@json($file)); closeMenu()" class="flex items-center w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50/50 flex items-center">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        Move to Trash
                                      </button>
                                  </div>
                             </div>
@@ -364,28 +363,23 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach($files as $file)
                     <tr class="hover:bg-gray-50 cursor-pointer" 
-                        :class="{'bg-blue-50': pickerMode && pickerMultiple && selectedFiles.some(f => f.id === {{ $file->id }})}"
+                        :class="{'bg-blue-50': selectedFiles.some(f => f.id === {{ $file->id }})}"
                         @if($file->type === 'folder')
-                             onclick="window.location.href='{{ route('file-manager.dashboard', array_merge(request()->query(), ['folder_id' => $file->id])) }}'"
+                             @click="handleFileClick(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
+                             @dblclick="window.location.href='{{ route('file-manager.dashboard', array_merge(request()->query(), ['folder_id' => $file->id])) }}'"
                         @else
-                            @click="pickerMode ? selectFile(allFiles.find(f => f.id == {{ $file->id }})) : openPreview(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
+                            @click="handleFileClick(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
+                            @dblclick="openPreview(allFiles.find(f => f.id == {{ $file->id }}), allFiles)"
                         @endif
                     >
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center">
-                                <!-- Selection Checkbox/Radio -->
-                                <div x-show="pickerMode" class="mr-3" @click.stop="selectFile(allFiles.find(f => f.id == {{ $file->id }}))">
-                                    @if($file->type !== 'folder')
-                                    <div x-show="pickerMultiple" 
-                                         class="w-5 h-5 rounded border border-gray-300 bg-white flex items-center justify-center transition-colors"
+                                <!-- Selection Checkbox -->
+                                <div class="mr-3" @click.stop="selectFile(allFiles.find(f => f.id == {{ $file->id }}))">
+                                    <div class="w-5 h-5 rounded border border-gray-300 bg-white flex items-center justify-center transition-colors shadow-sm"
                                          :class="{'theme-bg-primary border-transparent': selectedFiles.some(f => f.id === {{ $file->id }})}">
-                                        <svg x-show="selectedFiles.some(f => f.id === {{ $file->id }})" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                        <svg x-show="selectedFiles.some(f => f.id === {{ $file->id }})" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                                     </div>
-                                    <div x-show="!pickerMultiple" 
-                                         class="w-5 h-5 rounded-full border border-gray-300 bg-white flex items-center justify-center">
-                                         <div class="w-2.5 h-2.5 rounded-full theme-bg-primary opacity-0 hover:opacity-50"></div>
-                                    </div>
-                                    @endif
                                 </div>
                                 <div class="flex-shrink-0 h-10 w-10 bg-gray-100 rounded flex items-center justify-center text-gray-400">
                                     @if($file->type === 'folder')
@@ -419,18 +413,6 @@
                                     <button @click.stop="openRename({{ $file->toJson() }}); closeMenu()" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                         Rename
-                                    </button>
-                                    <button @click.stop="downloadFile({{ $file->toJson() }}); closeMenu()" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                        Download
-                                    </button>
-                                    <button @click.stop="openMove({{ $file->toJson() }}); closeMenu()" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                        Move
-                                    </button>
-                                    <button @click.stop="openTrash({{ $file->toJson() }}); closeMenu()" class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        Move to Trash
                                     </button>
                                 </div>
                             </div>
@@ -537,18 +519,6 @@
                                     <button @click.stop="openRename(file); closeMenu()" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                         Rename
-                                    </button>
-                                    <button @click.stop="downloadFile(file); closeMenu()" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                        Download
-                                    </button>
-                                    <button @click.stop="openMove(file); closeMenu()" class="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                                        Move
-                                    </button>
-                                    <button @click.stop="openTrash(file); closeMenu()" class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        Move to Trash
                                     </button>
                                 </div>
                             </div>
@@ -670,6 +640,44 @@
         </div>
     </div>
 
+    <!-- Bulk Actions Toolbar -->
+    <div x-show="selectedFiles.length > 0 && !pickerMode" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-10"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-10"
+         class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] bg-white/80 backdrop-blur-2xl px-6 py-4 rounded-2xl shadow-2xl border border-white/50 flex items-center space-x-6">
+        
+        <div class="flex items-center space-x-2 border-r border-gray-200 pr-6 mr-2">
+            <span class="flex items-center justify-center min-w-8 h-8 px-2 rounded-full theme-bg-primary text-white text-xs font-bold" x-text="selectedFiles.length"></span>
+            <span class="text-sm font-semibold text-gray-700">Selected</span>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button @click="openBulkMove()" 
+                    class="flex items-center px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-colors font-medium text-sm">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                Move
+            </button>
+            <button @click="bulkDownload()" 
+                    class="flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-colors font-medium text-sm">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Download
+            </button>
+            <button @click="bulkDelete()" 
+                    class="flex items-center px-4 py-2 bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition-colors font-medium text-sm">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Delete
+            </button>
+            <button @click="selectedFiles = []" 
+                    class="flex items-center px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors font-medium text-sm">
+                Cancel
+            </button>
+        </div>
+    </div>
+
     <!-- Move Modal -->
     <div x-show="showMoveModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4 text-center">
@@ -679,7 +687,13 @@
 
             <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                 <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Move File</h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900" x-text="bulkMode ? 'Move Selected Items' : 'Move File'">Move File</h3>
+                    <div class="mt-2 text-sm text-gray-500 mb-4" x-show="!bulkMode && selectedFile">
+                         Moving: <span class="font-semibold" x-text="selectedFile.basename"></span>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500 mb-4" x-show="bulkMode">
+                         Moving <span class="font-semibold" x-text="selectedFiles.length"></span> items.
+                    </div>
                     <div class="mt-2">
                         <select id="move-folder-select" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border">
                             <option value="">Select Folder...</option>
@@ -693,7 +707,7 @@
                     <button type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm" @click="moveFile()">
                         Move
                     </button>
-                    <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" @click="showMoveModal = false">
+                    <button type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm" @click="showMoveModal = false; bulkMode = false;">
                         Cancel
                     </button>
                 </div>

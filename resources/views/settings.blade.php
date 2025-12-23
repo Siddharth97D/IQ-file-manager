@@ -235,6 +235,7 @@
                             <option value="us-east-2">US East (Ohio)</option>
                             <option value="us-west-1">US West (N. California)</option>
                             <option value="us-west-2">US West (Oregon)</option>
+                            <option value="eu-west-3">EU West 3</option>
                             <option value="eu-west-1">EU (Ireland)</option>
                             <option value="eu-central-1">EU (Frankfurt)</option>
                             <option value="ap-southeast-1">Asia Pacific (Singapore)</option>

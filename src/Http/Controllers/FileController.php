@@ -106,4 +106,46 @@ class FileController extends Controller
         
         return response()->download($zipPath)->deleteFileAfterSend(true);
     }
+
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:files,id',
+            'parent_id' => 'nullable|exists:files,id'
+        ]);
+
+        FileManager::bulkMove($request->ids, $request->parent_id);
+
+        return response()->json(['message' => 'Files moved successfully']);
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:files,id'
+        ]);
+
+        FileManager::bulkDelete($request->ids);
+
+        return response()->json(['message' => 'Files deleted successfully']);
+    }
+
+    public function folderTree()
+    {
+        return response()->json(FileManager::getFolderTree());
+    }
+
+    public function bulkDownload(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:files,id'
+        ]);
+
+        $zipPath = FileManager::bulkDownload($request->ids);
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
 }

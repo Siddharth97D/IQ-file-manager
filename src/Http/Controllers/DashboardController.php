@@ -37,7 +37,7 @@ class DashboardController extends Controller
         $files = File::onlyTrashed()
             ->where('owner_id', Auth::id())
             ->latest()
-            ->get();
+            ->paginate(20);
             
         $targetInput = $request->query('target', null);
         return view('file-manager::trash', compact('files', 'targetInput'));

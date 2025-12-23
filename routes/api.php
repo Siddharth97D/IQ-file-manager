@@ -20,12 +20,17 @@ Route::group([
     Route::get('/files/{file}/download', [FileController::class, 'download']);
     Route::get('/files/{file}/preview', [FileController::class, 'preview'])->name('file-manager.preview')->withTrashed();
     
+    // Bulk Operations
+    Route::post('/files/bulk-delete', [FileController::class, 'bulkDestroy']);
+    Route::post('/files/bulk-move', [FileController::class, 'bulkUpdate']);
+    Route::post('/files/bulk-download', [FileController::class, 'bulkDownload']);
+    
     // Upload
     Route::post('/files/upload', [UploadController::class, 'upload']);
 
     
-    // Folders (Simplified as just creating a directory or empty file marker if needed, 
-    // but usually just path management. Spec asked for POST /folders)
+    // Folders
+    Route::get('/folders/tree', [FileController::class, 'folderTree']);
     Route::post('/folders', [FileController::class, 'createFolder']);
     Route::get('/folders/{folder}/download', [FileController::class, 'downloadFolder']);
 
@@ -35,6 +40,8 @@ Route::group([
     // Trash 
     Route::get('/trash', [TrashController::class, 'index'])->name('file-manager.trash.index');
     Route::delete('/trash/empty', [TrashController::class, 'empty'])->name('file-manager.trash.empty');
+    Route::post('/trash/bulk-restore', [TrashController::class, 'bulkRestore']);
+    Route::post('/trash/bulk-destroy', [TrashController::class, 'bulkDestroy']);
     Route::post('/trash/{id}/restore', [TrashController::class, 'restore'])->name('file-manager.trash.restore');
     Route::delete('/trash/{id}', [TrashController::class, 'destroy'])->name('file-manager.trash.destroy');
 
