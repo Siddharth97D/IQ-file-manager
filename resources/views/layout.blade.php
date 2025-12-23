@@ -179,6 +179,7 @@
     showNewFolderModal: false,
     showRenameModal: false,
     showMoveModal: false,
+    bulkMode: false,
     selectedFile: null,
     targetInput: '{{ $targetInput ?? '' }}',
     targetInput: '{{ $targetInput ?? '' }}',
@@ -296,24 +297,38 @@
     },
 
     selectFile(file) {
-        if (!file) return; // Safety check
+        if (!file) return;
         
-        if (this.pickerMode) {
-            if (this.pickerMultiple) {
-                // Toggle selection
-                const index = this.selectedFiles.findIndex(f => f.id === file.id);
-                if (index === -1) {
-                    this.selectedFiles.push(file);
-                } else {
-                    this.selectedFiles.splice(index, 1);
-                }
-            } else {
-                // Single select - replace current selection
-                this.selectedFiles = [file];
-            }
+        // Prevent selection if we just double clicked (handled by dblclick)
+        // We can use a small delay or check for event type if needed, but 
+        // usually toggle selection on single click is fine.
+        
+        const index = this.selectedFiles.findIndex(f => f.id === file.id);
+        if (this.pickerMode && !this.pickerMultiple) {
+            this.selectedFiles = [file];
         } else {
-            // Normal selection logic (maybe highlight)
+            if (index === -1) {
+                this.selectedFiles.push(file);
+            } else {
+                this.selectedFiles.splice(index, 1);
+            }
         }
+    },
+
+    // Handle single click vs double click
+    clickTimeout: null,
+    handleFileClick(file, allFiles) {
+        if (this.clickTimeout) {
+            clearTimeout(this.clickTimeout);
+            this.clickTimeout = null;
+            // This was a double click, handled by @dblclick
+            return;
+        }
+
+        this.clickTimeout = setTimeout(() => {
+            this.selectFile(file);
+            this.clickTimeout = null;
+        }, 250); // Small delay to wait for potential second click
     },
 
     confirmSelection() {
@@ -335,15 +350,29 @@
     },
 
     openRename(file) {
-        this.selectedFile = file;
+        // Ensure file is an object, not a string
+        if (typeof file === 'string') {
+            try {
+                file = JSON.parse(file);
+            } catch (e) {
+                console.error('Failed to parse file JSON:', e);
+                return;
+            }
+        }
+        // Deep copy to avoid Alpine proxy issues during modal edit
+        this.selectedFile = JSON.parse(JSON.stringify(file));
         this.showRenameModal = true;
     },
 
     async renameFile() {
-        if (!this.selectedFile) return;
+        if (!this.selectedFile || !this.selectedFile.basename) return;
         
         try {
-            const response = await fetch(`${window.apiBaseUrl}/files/${this.selectedFile.id}`, {
+            const url = this.selectedFile.type === 'folder' 
+                ? `${window.apiBaseUrl}/folders/${this.selectedFile.id}`
+                : `${window.apiBaseUrl}/files/${this.selectedFile.id}`;
+
+            const response = await fetch(url, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -374,41 +403,159 @@
     folders: [],
     async fetchFolders() {
         try {
-            const response = await fetch(`${window.apiBaseUrl}/files?type=folder`);
+            const response = await fetch(`${window.apiBaseUrl}/folders/tree`);
             const data = await response.json();
-            this.folders = data.data; // Assuming paginated response
+            this.folders = this.flattenFolderTree(data);
         } catch (error) {
             console.error('Error fetching folders:', error);
         }
+    },
+
+    flattenFolderTree(nodes, level = 0) {
+        let flat = [];
+        nodes.forEach(node => {
+            // Create a display name with indentation
+            const prefix = '— '.repeat(level);
+            flat.push({
+                id: node.id,
+                basename: prefix + node.basename,
+                path: node.path
+            });
+            if (node.children_tree && node.children_tree.length > 0) {
+                flat = flat.concat(this.flattenFolderTree(node.children_tree, level + 1));
+            }
+        });
+        return flat;
     },
 
     async moveFile() {
         const folderSelect = document.getElementById('move-folder-select');
         const targetFolderId = folderSelect.value;
         
-        if (!this.selectedFile || !targetFolderId) return;
+        if (!targetFolderId) return;
 
+        if (this.bulkMode) {
+             // Bulk move logic
+             try {
+                const response = await fetch(`${window.apiBaseUrl}/files/bulk-move`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ 
+                        ids: this.selectedFiles.map(f => f.id),
+                        parent_id: targetFolderId 
+                    })
+                });
+                
+                if (response.ok) {
+                    this.showMoveModal = false;
+                    this.bulkMode = false;
+                    this.selectedFiles = [];
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert(data.message || 'Bulk move failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred');
+            }
+        } else {
+            // Single move logic
+            if (!this.selectedFile) return;
+
+            try {
+                const response = await fetch(`${window.apiBaseUrl}/files/${this.selectedFile.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ parent_id: targetFolderId })
+                });
+                
+                if (response.ok) {
+                    this.showMoveModal = false;
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    alert(data.message || 'Move failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred');
+            }
+        }
+    },
+
+    openBulkMove() {
+        this.bulkMode = true;
+        this.selectedFile = null; // Clear single selection
+        this.showMoveModal = true;
+        this.fetchFolders();
+    },
+
+    async bulkDelete() {
+        if (!confirm(`Are you sure you want to move ${this.selectedFiles.length} items to trash?`)) return;
+        
         try {
-            const response = await fetch(`${window.apiBaseUrl}/files/${this.selectedFile.id}`, {
-                method: 'PATCH',
+            const response = await fetch(`${window.apiBaseUrl}/files/bulk-delete`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ parent_id: targetFolderId })
+                body: JSON.stringify({ ids: this.selectedFiles.map(f => f.id) })
             });
             
             if (response.ok) {
-                this.showMoveModal = false;
+                this.selectedFiles = [];
                 window.location.reload();
             } else {
                 const data = await response.json();
-                alert(data.message || 'Move failed');
+                alert(data.message || 'Bulk delete failed');
             }
         } catch (error) {
             console.error('Error:', error);
             alert('An error occurred');
         }
+    },
+
+    async bulkDownload() {
+        try {
+            const response = await fetch(`${window.apiBaseUrl}/files/bulk-download`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ ids: this.selectedFiles.map(f => f.id) })
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `bulk_download_${Date.now()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                const data = await response.json();
+                alert(data.message || 'Bulk download failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred during download');
+        }
+    },
+
+    refresh() {
+        window.location.reload();
     },
 
     async openTrash(file) {

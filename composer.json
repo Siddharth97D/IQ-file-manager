@@ -1,5 +1,6 @@
 {
     "name": "iqonic/laravel-advanced-file-manager",
+    "version": "1.1.0",
     "description": "A production-ready Laravel file management package with role-based access, image/video compression, and storage quotas.",
     "type": "library",
     "license": "MIT",
@@ -11,21 +12,32 @@
     ],
     "keywords": [
         "laravel",
-        "file-manager",
-        "media",
-        "upload",
+        "file manager",
+        "media manager",
+        "file picker",
+        "filesystem",
         "s3",
-        "compression"
+        "upload",
+        "laravel file manager",
+        "laravel media library",
+        "file manager package",
+        "aws s3"
     ],
+    "homepage": "https://github.com/Siddharth97D/IQ-file-manager",
+    "support": {
+        "issues": "https://github.com/Siddharth97D/IQ-file-manager/issues",
+        "source": "https://github.com/Siddharth97D/IQ-file-manager"
+    },
     "require": {
         "php": "^8.1",
         "illuminate/support": "^10.0|^11.0",
         "illuminate/contracts": "^10.0|^11.0",
         "intervention/image": "^2.7",
-        "php-ffmpeg/php-ffmpeg": "^1.1"
+        "php-ffmpeg/php-ffmpeg": "^1.1",
+        "aws/aws-sdk-php": "^3.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^9.0",
+        "orchestra/testbench": "^8.0",
         "pestphp/pest": "^2.0",
         "pestphp/pest-plugin-laravel": "^2.0"
     },
@@ -50,5 +62,10 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
 }

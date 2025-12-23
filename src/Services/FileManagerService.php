@@ -180,20 +180,17 @@ class FileManagerService
         $oldPath = $file->path;
         $newPath = $file->parent ? $file->parent->path . '/' . $newName : $newName;
 
+        if ($oldPath === $newPath) return true;
+
         if (Storage::disk($file->disk)->exists($oldPath)) {
             if (Storage::disk($file->disk)->move($oldPath, $newPath)) {
-                $file->update([
-                    'basename' => $newName,
-                    'path' => $newPath,
-                ]);
+                $this->updateDatabasePaths($file, $file->parent_id, $newPath, $file->disk);
+                $file->update(['basename' => $newName]); // Update basename specifically
                 return true;
             }
         } else {
-             // If physical file missing, just update DB
-            $file->update([
-                'basename' => $newName,
-                'path' => $newPath,
-            ]);
+            $this->updateDatabasePaths($file, $file->parent_id, $newPath, $file->disk);
+            $file->update(['basename' => $newName]);
             return true;
         }
 
@@ -205,31 +202,60 @@ class FileManagerService
      */
     public function move(File $file, ?int $parentId): bool
     {
+        $oldPath = $file->path;
         $newPath = $file->basename;
+        $newDisk = $file->disk;
+        
         if ($parentId) {
             $parent = File::find($parentId);
             if ($parent) {
+                // Prevent moving into its own child or itself
+                if ($parentId == $file->id || str_starts_with($parent->path, $file->path . '/')) {
+                    return false;
+                }
                 $newPath = $parent->path . '/' . $file->basename;
+                $newDisk = $parent->disk;
+            } else {
+                // Moving to root, use default disk or keep current?
+                // For root moves, we usually keep the current disk or use config
+                $newDisk = config('file-manager.disk', 'public');
             }
         }
 
-        if (Storage::disk($file->disk)->exists($file->path)) {
-             if (Storage::disk($file->disk)->move($file->path, $newPath)) {
-                 $file->update([
-                    'parent_id' => $parentId,
-                    'path' => $newPath,
-                ]);
-                return true;
+        if ($oldPath === $newPath && $file->disk === $newDisk) return true;
+
+        if (Storage::disk($file->disk)->exists($oldPath)) {
+             // Note: move() across different disks might fail depending on driver.
+             // If disks differ, we should copy and delete, but for now we assume same disk.
+             if (Storage::disk($file->disk)->move($oldPath, $newPath)) {
+                 $this->updateDatabasePaths($file, $parentId, $newPath, $newDisk);
+                 return true;
             }
         } else {
-             $file->update([
-                'parent_id' => $parentId,
-                'path' => $newPath,
-            ]);
-            return true;
+             $this->updateDatabasePaths($file, $parentId, $newPath, $newDisk);
+             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Recursively update paths and disks in database for a moved folder
+     */
+    protected function updateDatabasePaths(File $file, ?int $parentId, string $newPath, string $newDisk)
+    {
+        $file->update([
+            'parent_id' => $parentId,
+            'path' => $newPath,
+            'disk' => $newDisk,
+        ]);
+
+        if ($file->type === 'folder') {
+            foreach ($file->children as $child) {
+                $childNewPath = $newPath . '/' . $child->basename;
+                $this->updateDatabasePaths($child, $file->id, $childNewPath, $newDisk);
+            }
+        }
     }
 
     /**
@@ -238,6 +264,68 @@ class FileManagerService
     public function delete(File $file): bool
     {
         return $file->delete();
+    }
+
+    /**
+     * Delete multiple files or folders
+     */
+    public function bulkDelete(array $ids): bool
+    {
+        return File::whereIn('id', $ids)->delete();
+    }
+
+    /**
+     * Move multiple files or folders
+     */
+    public function bulkMove(array $ids, ?int $parentId): bool
+    {
+        $files = File::whereIn('id', $ids)->get();
+        $success = true;
+
+        foreach ($files as $file) {
+            if (!$this->move($file, $parentId)) {
+                $success = false;
+            }
+        }
+
+        return $success;
+    }
+
+    /**
+     * Restore multiple files or folders
+     */
+    public function bulkRestore(array $ids): bool
+    {
+        return File::onlyTrashed()->whereIn('id', $ids)->restore();
+    }
+
+    /**
+     * Get folder tree
+     */
+    public function getFolderTree(?int $parentId = null): array
+    {
+        $query = File::folders();
+        if (Auth::check()) {
+            $query->where('owner_id', Auth::id());
+        }
+        
+        $folders = $query->get();
+        return $this->buildTree($folders, $parentId);
+    }
+
+    protected function buildTree($folders, $parentId = null)
+    {
+        $branch = [];
+        foreach ($folders as $folder) {
+            if ($folder->parent_id == $parentId) {
+                $children = $this->buildTree($folders, $folder->id);
+                if ($children) {
+                    $folder->children_tree = $children;
+                }
+                $branch[] = $folder;
+            }
+        }
+        return $branch;
     }
 
     /**
@@ -288,6 +376,41 @@ class FileManagerService
         if (!file_exists($zipPath)) {
              // Fallback or throw exception
              throw new \Exception("Failed to create zip file at $zipPath");
+        }
+
+        return $zipPath;
+    }
+
+    /**
+     * Download multiple files/folders as Zip
+     */
+    public function bulkDownload(array $ids): string
+    {
+        $files = File::whereIn('id', $ids)->get();
+        $zipFileName = 'bulk_download_' . time() . '.zip';
+        $zipPath = storage_path('app/temp/' . $zipFileName);
+        
+        if (!file_exists(dirname($zipPath))) {
+            mkdir(dirname($zipPath), 0755, true);
+        }
+
+        $zip = new \ZipArchive;
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === TRUE) {
+            foreach ($files as $file) {
+                if ($file->type === 'folder') {
+                    $storageFiles = Storage::disk($file->disk)->allFiles($file->path);
+                    foreach ($storageFiles as $filePath) {
+                        $content = Storage::disk($file->disk)->get($filePath);
+                        // Relative path: folder_name / relative_path_inside_folder
+                        $relativePath = $file->basename . '/' . substr($filePath, strlen($file->path) + 1);
+                        $zip->addFromString($relativePath, $content);
+                    }
+                } else {
+                    $content = Storage::disk($file->disk)->get($file->path);
+                    $zip->addFromString($file->basename, $content);
+                }
+            }
+            $zip->close();
         }
 
         return $zipPath;

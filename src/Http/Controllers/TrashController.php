@@ -50,4 +50,28 @@ class TrashController extends Controller
 
         return response()->json(['message' => 'File permanently deleted']);
     }
+
+    public function bulkRestore(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:files,id'
+        ]);
+
+        FileManager::bulkRestore($request->ids);
+
+        return response()->json(['message' => 'Files restored successfully']);
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:files,id'
+        ]);
+
+        File::onlyTrashed()->whereIn('id', $request->ids)->forceDelete();
+
+        return response()->json(['message' => 'Files permanently deleted']);
+    }
 }
