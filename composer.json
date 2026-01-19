@@ -1,6 +1,6 @@
 {
     "name": "iqonic/laravel-advanced-file-manager",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "description": "A production-ready Laravel file management package with role-based access, image/video compression, and storage quotas.",
     "type": "library",
     "license": "MIT",
@@ -34,7 +34,8 @@
         "illuminate/contracts": "^10.0|^11.0|^12.0",
         "intervention/image": "^2.7|^3.0",
         "php-ffmpeg/php-ffmpeg": "^1.1",
-        "aws/aws-sdk-php": "^3.0"
+        "aws/aws-sdk-php": "^3.0",
+        "laravel/sanctum": "^3.3"
     },
     "require-dev": {
         "orchestra/testbench": "^8.0|^9.0|^10.0",

@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-01-19
+
+### Added
+- **Headless API**: Complete Headless API foundation using Laravel Sanctum.
+    - `POST /api/auth/token` - Issue API tokens.
+    - `POST /api/auth/logout` - Revoke tokens.
+    - `GET /api/user` - Get authenticated user.
+- **Frontend Features**:
+    - **Dark Mode**: Integrated dark mode with CSS variables and persistence (Local Storage + DB).
+    - **Keyboard Shortcuts**: Added global shortcuts (`Ctrl+A`, `Del`, `?`, `Esc`) and help modal.
+    - **Theme Manager**: JS utility for managing theme states and syncing with backend preferences.
+- **Components**: Added `shortcuts-modal` Blade component.
+- **Integration**: Auto-injected frontend assets into `layout.blade.php`.
+
+### Changed
+- **API Middleware**: Secured API routes to allow both Session (Web) and Sanctum (API) authentication.
+
 ## [1.2.0] - 2026-01-17
 
 ### Added

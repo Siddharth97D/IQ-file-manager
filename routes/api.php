@@ -9,8 +9,16 @@ use Iqonic\FileManager\Http\Controllers\StatsController;
 
 Route::group([
     'prefix' => config('file-manager.route_prefix') . '/api',
-    'middleware' => config('file-manager.middleware'),
+    // Allow either session auth (for dashboard) or santum token (for headless)
+    'middleware' => ['web'], 
 ], function () {
+    // Auth Routes (Public)
+    Route::post('/auth/token', [\Iqonic\FileManager\Http\Controllers\Api\AuthApiController::class, 'issueToken']);
+    
+    // Protected Routes
+    Route::group(['middleware' => ['auth:sanctum,web']], function () {
+        Route::post('/auth/logout', [\Iqonic\FileManager\Http\Controllers\Api\AuthApiController::class, 'logout']);
+        Route::get('/user', [\Iqonic\FileManager\Http\Controllers\Api\AuthApiController::class, 'user']);
     
     // Files
     Route::get('/files', [FileController::class, 'index']);
@@ -79,7 +87,9 @@ Route::group([
         return response()->json(['message' => 'Preference saved']);
     })->name('preferences.store');
 
-});
+    }); // End Protected Routes
+
+}); // End Outer Group
 
 // Public Share Route (No Auth Middleware, but maybe throttle)
 Route::get(config('file-manager.route_prefix') . '/shares/{token}', [ShareController::class, 'show']);

@@ -1,0 +1,46 @@
+:root {
+    --fm-bg-primary: #ffffff;
+    --fm-bg-secondary: #f3f4f6;
+    --fm-text-primary: #111827;
+    --fm-text-secondary: #6b7280;
+    --fm-border-color: #e5e7eb;
+    --fm-hover-bg: #f9fafb;
+    --fm-active-bg: #eff6ff;
+    --fm-primary-color: #3b82f6;
+}
+
+.dark {
+    --fm-bg-primary: #1f2937;
+    --fm-bg-secondary: #111827;
+    --fm-text-primary: #f9fafb;
+    --fm-text-secondary: #9ca3af;
+    --fm-border-color: #374151;
+    --fm-hover-bg: #374151;
+    --fm-active-bg: #2563eb;
+    --fm-primary-color: #60a5fa;
+}
+
+/* Apply variables */
+.fm-container {
+    background-color: var(--fm-bg-secondary);
+    color: var(--fm-text-primary);
+}
+
+.fm-sidebar, .fm-main {
+    background-color: var(--fm-bg-primary);
+    border-color: var(--fm-border-color);
+}
+
+.fm-item {
+    color: var(--fm-text-primary);
+}
+
+.fm-item:hover {
+    background-color: var(--fm-hover-bg);
+}
+
+.fm-modal-content {
+    background-color: var(--fm-bg-primary);
+    color: var(--fm-text-primary);
+    border: 1px solid var(--fm-border-color);
+}
