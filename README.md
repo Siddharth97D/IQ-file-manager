@@ -35,6 +35,9 @@ While there are many file managers for Laravel, this package is built for develo
 - **Zip Downloads**: Download entire folders as `.zip` archives.
 - **Image Variants**: Auto-generate multiple responsive image sizes (Thumbnail, Small, Medium, Large) + WebP support.
 - **Favorites & Preferences**: Mark files as favorites and store user-specific settings.
+- **Headless API**: Full Sanctum-auth API for building custom frontends (React/Vue).
+- **Dark Mode**: Built-in dark mode with auto-detection and toggle.
+- **Keyboard Shortcuts**: Power-user hotkeys for quick navigation.
 
 ### 🎨 Customization
 - **Dynamic Theming**: Change sidebar colors, active states, and fonts directly from settings.
@@ -162,6 +165,25 @@ UserPreference::set($user->id, 'theme', 'dark');
 
 // Retrieve a preference
 $theme = UserPreference::get($user->id, 'theme', 'light');
+```
+
+### 6. Headless API
+This package provides a full JSON API secured by Laravel Sanctum for headless implementations.
+
+**Authentication:**
+- Supports standard Web Session (for dashboard) OR Sanctum Tokens (for external apps).
+- Issue Token: `POST /api/auth/token`
+- Get User: `GET /api/user`
+
+**Endpoints:**
+All dashboard routes are available via API (e.g., `GET /api/files`, `POST /api/files/upload`), returning JSON responses.
+
+### 7. Keyboard Shortcuts
+Navigate faster with built-in hotkeys:
+- **`?`**: Show Help Modal
+- **`Ctrl/Cmd + A`**: Select All Files
+- **`Delete` / `Backspace`**: Delete Selected Files
+- **`Esc`**: Clear Selection / Close Modals
 ```
 
 ---
