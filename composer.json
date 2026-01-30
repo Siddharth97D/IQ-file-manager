@@ -1,6 +1,6 @@
 {
     "name": "iqonic/laravel-advanced-file-manager",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "description": "A production-ready Laravel file management package with role-based access, image/video compression, and storage quotas.",
     "type": "library",
     "license": "MIT",

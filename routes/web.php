@@ -11,14 +11,12 @@ Route::group([
     Route::get('/', [DashboardController::class, 'index'])->name('file-manager.dashboard');
     Route::get('/trash', [DashboardController::class, 'trash'])->name('file-manager.trash');
     // Public Shared Links
-    Route::get('/shared/{token}', [\Iqonic\FileManager\Http\Controllers\ShareController::class, 'show'])->name('share.show');
+    Route::get('/shared/{token}', [\Iqonic\FileManager\Http\Controllers\ShareController::class, 'show'])->name('file-manager.share.show');
     Route::post('/shared/{token}/unlock', [\Iqonic\FileManager\Http\Controllers\ShareController::class, 'unlock'])->name('share.unlock');
     Route::get('/shared/{token}/download', [\Iqonic\FileManager\Http\Controllers\ShareController::class, 'download'])->name('share.download');
+    Route::get('/shared/{token}/preview', [\Iqonic\FileManager\Http\Controllers\ShareController::class, 'preview'])->name('share.preview');
 
-    // Main Dashboard Route
-    Route::get('/', [\Iqonic\FileManager\Http\Controllers\FileManagerController::class, 'index'])
-        ->middleware(config('file-manager.middleware'))
-        ->name('dashboard');
+
     Route::get('/settings', [\Iqonic\FileManager\Http\Controllers\SettingsController::class, 'index'])->name('file-manager.settings');
 
 });

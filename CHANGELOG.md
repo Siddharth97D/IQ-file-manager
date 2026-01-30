@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-01-30
+
+### Added
+- **Secure File Sharing**: Added ability to create public shareable links for files.
+    - Password protection support.
+    - Expiration date support.
+    - Maximum download limit support.
+    - Standalone download page with file preview.
+- **Context Menu**: Added right-click context menu (3-dot menu) for quick file actions.
+    - "Get Share Link" option integrated.
+- **Preview Route**: Added dedicated preview route for shared files to preventing download count consumption on view.
+
+### Fixed
+- Fixed `ShareController` inheritance issue (`Class "Controller" not found`).
+- Fixed `CSRF token mismatch` by adding meta tag to layout.
+- Fixed `Method authorize does not exist` by adding `AuthorizesRequests` trait.
+- Fixed conflicting migrations for `file_shares` and `file_manager_settings`.
+- Fixed `Unable to retrieve file_size` error by correctly resolving file disk.
+- Fixed "Link Expired" issue caused by previews counting as downloads.
+
 ## [1.4.0] - 2026-01-28
 ### Added
 - **Secure File Sharing**: Generate public links with optional password protection and expiration.

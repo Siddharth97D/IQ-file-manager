@@ -6,10 +6,14 @@ use Illuminate\Http\Request;
 use Iqonic\FileManager\Models\File;
 use Iqonic\FileManager\Models\FileShare;
 use Iqonic\FileManager\Services\FileManagerService;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Storage;
 
 class ShareController extends Controller
 {
+    use \Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+    use \Illuminate\Foundation\Validation\ValidatesRequests;
+
     protected $fileManagerService;
 
     public function __construct(FileManagerService $fileManagerService)
@@ -52,7 +56,7 @@ class ShareController extends Controller
         }
 
         // If password protected, show password form
-        if ($share->password_hash) {
+        if ($share->password_hash && !session('share_unlocked_' . $token)) {
             return view('file-manager::share.password', compact('share'));
         }
 
@@ -75,8 +79,8 @@ class ShareController extends Controller
             return back()->with('error', 'Invalid password.');
         }
 
-        // Flash success to session so view can show content
-        session()->flash('share_unlocked_' . $token, true);
+        // Store in session (not flash, so it persists for subsequent requests like download/preview)
+        session()->put('share_unlocked_' . $token, true);
 
         return view('file-manager::share.download', compact('share'));
     }
@@ -94,8 +98,6 @@ class ShareController extends Controller
 
         // Check password if set (unless unlocked in session)
         if ($share->password_hash && !session('share_unlocked_' . $token)) {
-             // For direct download links, if password exists, we can't easily prompt.
-             // We assume they came from the show page which handled unlocking.
              abort(403, 'Password required.');
         }
 
@@ -103,8 +105,39 @@ class ShareController extends Controller
         $share->increment('downloads');
 
         $path = $share->file->path;
-        $disk = config('file-manager.disk');
+        $disk = $share->file->disk; // Use the disk associated with the file
 
-        return Storage::disk($disk)->download($path, $share->file->filename);
+        return Storage::disk($disk)->download($path, $share->file->basename);
+    }
+
+    /**
+     * Preview the file (Inline, no download count increment).
+     */
+    public function preview(Request $request, $token)
+    {
+        $share = FileShare::with('file')->where('token', $token)->firstOrFail();
+
+        if (!$share->isValid()) {
+            abort(403, 'Link expired.');
+        }
+
+        // Check password if set (unless unlocked in session)
+        if ($share->password_hash && !session('share_unlocked_' . $token)) {
+             abort(403, 'Password required.');
+        }
+
+        $path = $share->file->path;
+        $disk = $share->file->disk; // Use the disk associated with the file
+        
+        $fullPath = Storage::disk($disk)->path($path);
+
+        if (!file_exists($fullPath)) {
+            abort(404, 'File not found on server.');
+        }
+
+        return response()->file($fullPath, [
+            'Content-Type' => $share->file->mime_type,
+            'Content-Disposition' => 'inline; filename="' . $share->file->basename . '"'
+        ]);
     }
 }
